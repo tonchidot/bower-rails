@@ -31,20 +31,26 @@ module BowerRails
       if args[1]
         custom_assets_path = args[1][:assets_path]
         raise ArgumentError, "Assets should be stored in /assets directory, try :assets_path => 'assets/#{custom_assets_path}' instead" if custom_assets_path.match(/assets/).nil?
-        new_group = [args[0], args[1]]
+        @current_group = [args[0], args[1]]
       else
-        new_group = [args[0]]
+        @current_group = [args[0]]
       end
-      
-      @groups << new_group
+
+      @groups << @current_group
       yield
+      @current_group = nil
     end
 
     def js(name, *args)
       version = args.first || "latest"
-      @groups = [[:vendor, { assets_path: @assets_path }]] if @groups.empty?
+      groups = if @current_group
+                 [@current_group]
+               else
+                 @groups = [[:vendor, { assets_path: @assets_path }]] if @groups.empty?
+                 @groups
+               end
 
-      @groups.each do |g|
+      groups.each do |g|
         g_norm = normalize_location_path(g.first.to_s, group_assets_path(g))
         @dependencies[g_norm] ||= {}
         @dependencies[g_norm][name] = version
@@ -74,16 +80,16 @@ module BowerRails
     end
 
     def final_assets_path
-      @groups = [[:vendor, { assets_path: @assets_path }]] if @groups.empty? 
+      @groups = [[:vendor, { assets_path: @assets_path }]] if @groups.empty?
       @groups.map do |g|
         [g.first.to_s, group_assets_path(g)]
       end
-    end   
+    end
 
     def group_assets_path group
       group_options = Hash === group.last ? group.last : {:assets_path => @assets_path}
       group_options[:assets_path]
-    end 
+    end
 
     private
 
